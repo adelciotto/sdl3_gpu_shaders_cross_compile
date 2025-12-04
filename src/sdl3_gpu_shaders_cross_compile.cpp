@@ -27,8 +27,8 @@ enum Shader_Kind {
 };
 
 struct Shader_FBM_Warp_Uniforms {
-  HMM_Vec2 resolution;
   float    time;
+  HMM_Vec2 resolution;
 };
 
 struct App_State {
@@ -51,6 +51,7 @@ struct App_State {
   Shader_Kind                                             shader_kind = SHADER_KIND_FBM_WARP;
   Resources                                               resources;
   std::array<SDL_GPUGraphicsPipeline*, SHADER_KIND_COUNT> pipelines;
+  SDL_GPUTexture*                                         render_target;
 };
 
 static constexpr std::array<Resource_ID, SHADER_KIND_COUNT> SHADER_KIND_RESOURCE_IDS = {
@@ -268,6 +269,12 @@ static void draw_imgui(App_State* as) {
           "SDL3 GPU Shaders Cross Compile Demo",
           nullptr,
           ImGuiWindowFlags_HorizontalScrollbar)) {
+    auto& io = ImGui::GetIO();
+    ImGui::Text(
+        "Application average %.3f ms/frame (%.1f FPS)",
+        1000.0f / io.Framerate,
+        io.Framerate);
+
     bool vsync = as->vsync;
     if (ImGui::Checkbox("VSync", &vsync)) { on_vsync_changed(as, vsync); }
 
@@ -276,13 +283,21 @@ static void draw_imgui(App_State* as) {
       SDL_SetWindowFullscreen(as->window, as->fullscreen);
     }
 
-    auto& io = ImGui::GetIO();
-    ImGui::Text(
-        "Application average %.3f ms/frame (%.1f FPS)",
-        1000.0f / io.Framerate,
-        io.Framerate);
-
     ImGui::Separator();
+
+    static constexpr const char* shader_kind_strings[SHADER_KIND_COUNT] = {
+        "FBM Warp",
+    };
+    if (ImGui::BeginCombo("Shader Selection", shader_kind_strings[as->shader_kind])) {
+      for (int i = 0; i < SHADER_KIND_COUNT; i++) {
+        bool is_selected = as->shader_kind == i;
+        if (ImGui::Selectable(shader_kind_strings[i], is_selected)) {
+          as->shader_kind = static_cast<Shader_Kind>(i);
+        }
+        if (is_selected) { ImGui::SetItemDefaultFocus(); }
+      }
+      ImGui::EndCombo();
+    }
   }
   ImGui::End();
 }
@@ -368,10 +383,10 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
       SDL_BindGPUGraphicsPipeline(render_pass, as->pipelines[as->shader_kind]);
 
       switch (as->shader_kind) {
-      case RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP: {
+      case SHADER_KIND_FBM_WARP: {
         Shader_FBM_Warp_Uniforms uniforms = {};
-        uniforms.resolution               = as->window_size_pixels;
         uniforms.time                     = static_cast<float>(as->elapsed_time);
+        uniforms.resolution               = as->window_size_pixels;
         SDL_PushGPUFragmentUniformData(cmd_buf, 0, &uniforms, sizeof(uniforms));
       } break;
       default:
