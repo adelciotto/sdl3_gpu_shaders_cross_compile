@@ -3,6 +3,8 @@
 This repository contains example code for cross compiling shaders at both build-time and run-time using SDL3 and SDL3_shadercross.
 In debug mode the shaders are live reloaded on any changes.
 
+[Demo Video](https://anthonydelciotto.com/media/sdl3_gpu_shaders_cross_compile.mp4)
+
 ## Build
 
 ### Windows
@@ -86,8 +88,6 @@ This `sdl3_gpu_shaders_cross_compile` has been built in release mode. If you'd l
 
 ## TODO
 
-- [ ] Implement some shaders and finish the example.
-- [ ] Preview images and videos.
 - [ ] Upload pre-built binaries to releases.
 
 ## Dependencies / Tools
