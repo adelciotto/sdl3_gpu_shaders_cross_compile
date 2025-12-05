@@ -1,6 +1,7 @@
 enum Resource_ID {
   RESOURCE_ID_SHADER_VERTEX_FULLSCREEN,
   RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP,
+  RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT,
   RESOURCE_ID_COUNT,
 };
 
@@ -48,6 +49,13 @@ static constexpr auto RESOURCES_INFO = []() {
     auto info                          = &result[RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP];
     info->kind                         = RESOURCE_KIND_SHADER;
     info->file_name                    = "fbm_warp";
+    info->shader.stage                 = SDL_GPU_SHADERSTAGE_FRAGMENT;
+    info->shader.uniform_buffers_count = 1;
+  }
+  {
+    auto info                          = &result[RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT];
+    info->kind                         = RESOURCE_KIND_SHADER;
+    info->file_name                    = "plasma_beat";
     info->shader.stage                 = SDL_GPU_SHADERSTAGE_FRAGMENT;
     info->shader.uniform_buffers_count = 1;
   }

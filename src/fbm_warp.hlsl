@@ -3,7 +3,13 @@ cbuffer Uniform_Block : register(b0, space3) {
   float2 resolution : packoffset(c0.y);
 };
 
-#define mod(x, y) (x - y * floor(x / y))
+float mod(float x, float y) {
+  return x - y * floor(x / y);
+}
+
+float3 mod(float3 x, float y) {
+  return x - y * floor(x / y);
+}
 
 // https://www.shadertoy.com/view/4dS3Wd
 // By Morgan McGuire @morgan3d, http://graphicscodex.com

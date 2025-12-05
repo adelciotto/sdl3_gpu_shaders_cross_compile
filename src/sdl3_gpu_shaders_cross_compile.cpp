@@ -23,6 +23,7 @@
 
 enum Shader_Kind {
   SHADER_KIND_FBM_WARP,
+  SHADER_KIND_PLASMA_BEAT,
   SHADER_KIND_COUNT,
 };
 
@@ -52,35 +53,49 @@ struct App_State {
   Resources                                               resources;
   std::array<SDL_GPUGraphicsPipeline*, SHADER_KIND_COUNT> pipelines;
   SDL_GPUTexture*                                         render_target;
+  int                                                     render_scale_index;
+  HMM_Vec2                                                render_size;
 };
 
 static constexpr std::array<Resource_ID, SHADER_KIND_COUNT> SHADER_KIND_RESOURCE_IDS = {
-    {RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP},
+    {
+        RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP,
+        RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT,
+    },
 };
 
-static void on_window_pixel_size_changed(App_State* as, int width, int height) {
-  if (as->window_size_pixels.X == width && as->window_size_pixels.Y == height) { return; }
-  as->window_size_pixels = HMM_V2(width, height);
-}
+static constexpr std::array RENDER_TARGET_SCALE_VALUES = {
+    1.0f,
+    0.9f,
+    0.8f,
+    0.75f,
+    0.5f,
+};
 
-static void on_display_content_scale_changed(App_State* as, float content_scale) {
-  as->content_scale = content_scale;
+static bool create_render_texture(App_State* as) {
+  as->render_size = as->window_size_pixels * RENDER_TARGET_SCALE_VALUES[as->render_scale_index];
 
-  ImGuiStyle& style = ImGui::GetStyle();
-  style.ScaleAllSizes(as->content_scale);
-  style.FontScaleDpi = as->content_scale;
-}
+  SDL_GPUTexture* render_target;
+  {
+    SDL_GPUTextureCreateInfo info = {};
+    info.type                     = SDL_GPU_TEXTURETYPE_2D;
+    info.width                    = static_cast<int>(as->render_size.X);
+    info.height                   = static_cast<int>(as->render_size.Y);
+    info.layer_count_or_depth     = 1;
+    info.num_levels               = 1;
+    info.format                   = as->swapchain_texture_format;
+    info.usage    = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    render_target = SDL_CreateGPUTexture(as->device, &info);
+    if (render_target == nullptr) {
+      SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create texture: %s", SDL_GetError());
+      return false;
+    }
+  };
 
-static void on_vsync_changed(App_State* as, bool vsync) {
-  as->vsync = vsync;
+  SDL_ReleaseGPUTexture(as->device, as->render_target);
+  as->render_target = render_target;
 
-  SDL_GPUPresentMode present_mode =
-      vsync ? SDL_GPU_PRESENTMODE_VSYNC : SDL_GPU_PRESENTMODE_IMMEDIATE;
-  SDL_SetGPUSwapchainParameters(
-      as->device,
-      as->window,
-      SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
-      present_mode);
+  return true;
 }
 
 static bool create_shader_pipeline(App_State* as, Shader_Kind shader_kind) {
@@ -105,6 +120,38 @@ static bool create_shader_pipeline(App_State* as, Shader_Kind shader_kind) {
   as->pipelines[shader_kind] = pipeline;
 
   return true;
+}
+
+static bool on_window_pixel_size_changed(App_State* as, int width, int height) {
+  if (as->window_size_pixels.X == width && as->window_size_pixels.Y == height) { return true; }
+  as->window_size_pixels = HMM_V2(width, height);
+
+  if (!create_render_texture(as)) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create render target");
+    return false;
+  }
+
+  return true;
+}
+
+static void on_display_content_scale_changed(App_State* as, float content_scale) {
+  as->content_scale = content_scale;
+
+  ImGuiStyle& style = ImGui::GetStyle();
+  style.ScaleAllSizes(as->content_scale);
+  style.FontScaleDpi = as->content_scale;
+}
+
+static void on_vsync_changed(App_State* as, bool vsync) {
+  as->vsync = vsync;
+
+  SDL_GPUPresentMode present_mode =
+      vsync ? SDL_GPU_PRESENTMODE_VSYNC : SDL_GPU_PRESENTMODE_IMMEDIATE;
+  SDL_SetGPUSwapchainParameters(
+      as->device,
+      as->window,
+      SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
+      present_mode);
 }
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
@@ -224,7 +271,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
   {
     int w, h;
     SDL_GetWindowSizeInPixels(as->window, &w, &h);
-    on_window_pixel_size_changed(as, w, h);
+    if (!on_window_pixel_size_changed(as, w, h)) { return SDL_APP_FAILURE; }
   }
 
   as->count_per_second  = SDL_GetPerformanceFrequency();
@@ -287,12 +334,37 @@ static void draw_imgui(App_State* as) {
 
     static constexpr const char* shader_kind_strings[SHADER_KIND_COUNT] = {
         "FBM Warp",
+        "Plasma Beat",
     };
     if (ImGui::BeginCombo("Shader Selection", shader_kind_strings[as->shader_kind])) {
       for (int i = 0; i < SHADER_KIND_COUNT; i++) {
         bool is_selected = as->shader_kind == i;
         if (ImGui::Selectable(shader_kind_strings[i], is_selected)) {
           as->shader_kind = static_cast<Shader_Kind>(i);
+        }
+        if (is_selected) { ImGui::SetItemDefaultFocus(); }
+      }
+      ImGui::EndCombo();
+    }
+
+    static constexpr std::array<const char*, RENDER_TARGET_SCALE_VALUES.size()>
+        render_scale_strings = {
+            "100%",
+            "90%",
+            "80%",
+            "75%",
+            "50%",
+        };
+    if (ImGui::BeginCombo("Render Scale", render_scale_strings[as->render_scale_index])) {
+      for (int i = 0; i < RENDER_TARGET_SCALE_VALUES.size(); i++) {
+        bool is_selected = as->render_scale_index == i;
+        if (ImGui::Selectable(render_scale_strings[i], is_selected)) {
+          if (as->render_scale_index != i) {
+            as->render_scale_index = i;
+            if (!create_render_texture(as)) {
+              SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create render target");
+            }
+          }
         }
         if (is_selected) { ImGui::SetItemDefaultFocus(); }
       }
@@ -324,6 +396,9 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     } break;
     case RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP: {
       create_shader_pipeline(as, SHADER_KIND_FBM_WARP);
+    } break;
+    case RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT: {
+      create_shader_pipeline(as, SHADER_KIND_PLASMA_BEAT);
     } break;
     default:
       break;
@@ -374,7 +449,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     {
       SDL_GPUColorTargetInfo target_info = {};
-      target_info.texture                = swapchain_texture;
+      target_info.texture                = as->render_target;
       target_info.load_op                = SDL_GPU_LOADOP_CLEAR;
       target_info.store_op               = SDL_GPU_STOREOP_STORE;
       SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(cmd_buf, &target_info, 1, nullptr);
@@ -383,10 +458,11 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
       SDL_BindGPUGraphicsPipeline(render_pass, as->pipelines[as->shader_kind]);
 
       switch (as->shader_kind) {
-      case SHADER_KIND_FBM_WARP: {
+      case SHADER_KIND_FBM_WARP:
+      case SHADER_KIND_PLASMA_BEAT: {
         Shader_FBM_Warp_Uniforms uniforms = {};
         uniforms.time                     = static_cast<float>(as->elapsed_time);
-        uniforms.resolution               = as->window_size_pixels;
+        uniforms.resolution               = as->render_size;
         SDL_PushGPUFragmentUniformData(cmd_buf, 0, &uniforms, sizeof(uniforms));
       } break;
       default:
@@ -394,6 +470,29 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
       }
 
       SDL_DrawGPUPrimitives(render_pass, 3, 1, 0, 0);
+    }
+
+    {
+      SDL_GPUBlitInfo info     = {};
+      info.source.texture      = as->render_target;
+      info.source.w            = static_cast<int>(as->render_size.X);
+      info.source.h            = static_cast<int>(as->render_size.Y);
+      info.destination.texture = swapchain_texture;
+      info.destination.w       = static_cast<int>(as->window_size_pixels.X);
+      info.destination.h       = static_cast<int>(as->window_size_pixels.Y);
+      info.load_op             = SDL_GPU_LOADOP_DONT_CARE;
+      info.filter              = SDL_GPU_FILTER_LINEAR;
+      info.flip_mode           = SDL_FLIP_VERTICAL;
+      SDL_BlitGPUTexture(cmd_buf, &info);
+    }
+
+    {
+      SDL_GPUColorTargetInfo target_info = {};
+      target_info.texture                = swapchain_texture;
+      target_info.load_op                = SDL_GPU_LOADOP_DONT_CARE;
+      target_info.store_op               = SDL_GPU_STOREOP_STORE;
+      SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(cmd_buf, &target_info, 1, nullptr);
+      defer(SDL_EndGPURenderPass(render_pass));
 
       ImGui_ImplSDLGPU3_RenderDrawData(draw_data, cmd_buf, render_pass);
     }
