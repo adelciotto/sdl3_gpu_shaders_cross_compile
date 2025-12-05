@@ -59,7 +59,9 @@ This `sdl3_gpu_shaders_cross_compile.exe` has been built in release mode. If you
 
 ### Linux
 
-Building the code can be done in a terminal. The build script will automatically install all the dependencies required.
+Building the code can be done in a terminal. The build script will automatically download and build SDL3.
+
+Because we have to first build SDL3 on Linux, please ensure you install it's dependencies by following the instructions for your Linux distribution here: https://github.com/libsdl-org/SDL/blob/main/docs/README-linux.md
 
 Now just run the `build_linux.sh` script.
 

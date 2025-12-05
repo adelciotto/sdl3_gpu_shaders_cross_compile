@@ -14,11 +14,11 @@ if "%release%"=="1" set debug=0 && echo [release mode]
 
 :: --- Compile/Link Definitions -----------------------------------------------
 set cl_common=/nologo /MD /EHsc /std:c++17 ^
-              /I..\src /I..\extern\HandmadeMath /I..\extern\SDL3\windows\include /I..\extern\imgui
-set cl_debug=call cl /Zi /Od /DBUILD_DEBUG /DRESOURCES_PATH=\"%source_dir%/\" /I..\extern\SDL3_shadercross\windows\include %cl_common%
+              /I..\src /I..\extern\HandmadeMath /I..\extern\SDL3\win\include /I..\extern\imgui
+set cl_debug=call cl /Zi /Od /DBUILD_DEBUG /DRESOURCES_PATH=\"%source_dir%/\" /I..\extern\SDL3_shadercross\win\include %cl_common%
 set cl_release=call cl /O2 %cl_common%
-set cl_link_common=..\extern\SDL3\windows\lib\x64\SDL3.lib shell32.lib /subsystem:console
-set cl_link_debug=/link ..\extern\SDL3_shadercross\windows\lib\SDL3_shadercross.lib %cl_link_common%
+set cl_link_common=..\extern\SDL3\win\lib\x64\SDL3.lib shell32.lib /subsystem:console
+set cl_link_debug=/link ..\extern\SDL3_shadercross\win\lib\SDL3_shadercross.lib %cl_link_common%
 set cl_link_release=/link %cl_link_common%
 if "%debug%"=="1" set cl_compile=%cl_debug%
 if "%release%"=="1" set cl_compile=%cl_release%
@@ -26,7 +26,7 @@ if "%debug%"=="1" set cl_link=%cl_link_debug%
 if "%release%"=="1" set cl_link=%cl_link_release%
 
 :: --- Shader Compile Definitions ---------------------------------------------
-set shadercross=call ..\extern\SDL3_shadercross\windows\bin\shadercross.exe
+set shadercross=call ..\extern\SDL3_shadercross\win\bin\shadercross.exe
 set shadercross_vertex=%shadercross% -t vertex -DVERTEX_SHADER
 set shadercross_fragment=%shadercross% -t fragment -DFRAGMENT_SHADER
 
@@ -61,12 +61,12 @@ echo Compiling source files...
 popd
 
 :: --- Copy DLL's -------------------------------------------------------------
-if not exist %build_dir%\SDL3.dll copy extern\SDL3\windows\lib\x64\SDL3.dll %build_dir% >nul
+if not exist %build_dir%\SDL3.dll copy extern\SDL3\win\lib\x64\SDL3.dll %build_dir% >nul
 if "%debug%"=="1" (
-if not exist %build_dir%\SDL3_shadercross.dll copy extern\SDL3_shadercross\windows\bin\SDL3_shadercross.dll %build_dir% >nul
-if not exist %build_dir%\dxcompiler.dll copy extern\SDL3_shadercross\windows\bin\dxcompiler.dll %build_dir% >nul
-if not exist %build_dir%\dxil.dll copy extern\SDL3_shadercross\windows\bin\dxil.dll %build_dir% >nul
-if not exist %build_dir%\spirv-cross-c-shared.dll copy extern\SDL3_shadercross\windows\bin\spirv-cross-c-shared.dll %build_dir% >nul
+if not exist %build_dir%\SDL3_shadercross.dll copy extern\SDL3_shadercross\win\bin\SDL3_shadercross.dll %build_dir% >nul
+if not exist %build_dir%\dxcompiler.dll copy extern\SDL3_shadercross\win\bin\dxcompiler.dll %build_dir% >nul
+if not exist %build_dir%\dxil.dll copy extern\SDL3_shadercross\win\bin\dxil.dll %build_dir% >nul
+if not exist %build_dir%\spirv-cross-c-shared.dll copy extern\SDL3_shadercross\win\bin\spirv-cross-c-shared.dll %build_dir% >nul
 )
 
 echo Done^^!
