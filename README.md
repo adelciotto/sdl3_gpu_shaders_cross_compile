@@ -84,11 +84,7 @@ Done!
 
 If everything worked correctly, there will be a `build_release` folder in the root level of the project, and it will contain a freshly-built `sdl3_gpu_shaders_cross_compile` executable.
 
-This `sdl3_gpu_shaders_cross_compile` has been built in release mode. If you'd like to modify the source, debug it and live-reload shaders, you can just run `build_linux.bat` with no arguments for a debug build. The executable will be in a `build_debug` folder.
-
-## TODO
-
-- [ ] Upload pre-built binaries to releases.
+This `sdl3_gpu_shaders_cross_compile` has been built in release mode. If you'd like to modify the source, debug it and live-reload shaders, you can just run `build_linux.sh` with no arguments for a debug build. The executable will be in a `build_debug` folder.
 
 ## Dependencies / Tools
 
