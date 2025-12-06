@@ -66,16 +66,16 @@ static bool resource_load(
     Resources*           resources,
     Resource*            resource,
     SDL_GPUDevice*       device,
-    const std::string&   base_path,
+    SDL_Storage*         storage,
     const Resource_Info& resource_info) {
   switch (resource_info.kind) {
   case RESOURCE_KIND_SHADER: {
     std::vector<uint8_t> shader_code;
 #ifdef BUILD_DEBUG
-    resource->file_path = base_path + "src/" + resource_info.file_name + ".hlsl";
+    resource->file_path = std::string("src/") + resource_info.file_name + ".hlsl";
 
     std::string file_contents;
-    if (!read_file_contents(resource->file_path.c_str(), &file_contents)) {
+    if (!read_storage_file(storage, resource->file_path.c_str(), &file_contents)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to read file contents: %s",
@@ -90,7 +90,7 @@ static bool resource_load(
                                               ? SDL_SHADERCROSS_SHADERSTAGE_VERTEX
                                               : SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT;
     size_t   data_size;
-    uint8_t* data;
+    uint8_t* data = nullptr;
     switch (resources->shader_format) {
     case SDL_GPU_SHADERFORMAT_DXIL: {
       data = static_cast<uint8_t*>(SDL_ShaderCross_CompileDXILFromHLSL(&hlsl_info, &data_size));
@@ -117,11 +117,12 @@ static bool resource_load(
     }
     SDL_assert(data != nullptr);
     shader_code.assign(data, data + data_size);
+    SDL_free(data);
 #else
     resource->file_path =
-        base_path + "res/" + resource_info.file_name + "." + resources->shader_file_ext;
+        std::string("res/") + resource_info.file_name + "." + resources->shader_file_ext;
 
-    if (!read_file_contents(resource->file_path.c_str(), &shader_code)) {
+    if (!read_storage_file(storage, resource->file_path.c_str(), &shader_code)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to read file contents: %s",
@@ -163,9 +164,9 @@ static void resource_destroy(Resources* resources, Resource* resource, SDL_GPUDe
   }
 }
 
-static bool
-resources_load(Resources* resources, SDL_GPUDevice* device, const std::string& base_path) {
+static bool resources_load(Resources* resources, SDL_GPUDevice* device, SDL_Storage* storage) {
   SDL_assert(resources != nullptr);
+  SDL_assert(storage != nullptr);
   SDL_assert(device != nullptr);
 
   auto device_shader_formats = SDL_GetGPUShaderFormats(device);
@@ -188,7 +189,7 @@ resources_load(Resources* resources, SDL_GPUDevice* device, const std::string& b
   for (int i = 0; i < RESOURCE_ID_COUNT; i++) {
     auto        resource      = &resources->items[i];
     const auto& resource_info = RESOURCES_INFO[i];
-    if (!resource_load(resources, resource, device, base_path, resource_info)) {
+    if (!resource_load(resources, resource, device, storage, resource_info)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to load resource: kind=%d, file_name:%s",
@@ -198,7 +199,7 @@ resources_load(Resources* resources, SDL_GPUDevice* device, const std::string& b
     }
 
     SDL_PathInfo path_info;
-    if (!SDL_GetPathInfo(resource->file_path.c_str(), &path_info)) {
+    if (!SDL_GetStoragePathInfo(storage, resource->file_path.c_str(), &path_info)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to get resource file path info: %s",
@@ -218,11 +219,12 @@ resources_load(Resources* resources, SDL_GPUDevice* device, const std::string& b
 static void resources_live_reload(
     Resources*                                  resources,
     SDL_GPUDevice*                              device,
-    const std::string&                          base_path,
+    SDL_Storage*                                storage,
     std::array<Resource_ID, RESOURCE_ID_COUNT>* out_modified_resource_ids,
     int*                                        out_modified_resource_ids_count) {
   SDL_assert(resources != nullptr);
   SDL_assert(device != nullptr);
+  SDL_assert(storage != nullptr);
   SDL_assert(out_modified_resource_ids != nullptr);
   SDL_assert(out_modified_resource_ids_count != nullptr);
 
@@ -237,7 +239,7 @@ static void resources_live_reload(
     const auto& resource_info = RESOURCES_INFO[i];
 
     SDL_PathInfo path_info;
-    if (!SDL_GetPathInfo(resources->items[i].file_path.c_str(), &path_info)) {
+    if (!SDL_GetStoragePathInfo(storage, resources->items[i].file_path.c_str(), &path_info)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to get resource file path info: %s",
@@ -249,7 +251,7 @@ static void resources_live_reload(
     resources->items[i].last_modify_time = path_info.modify_time;
 
     Resource resource = resources->items[i];
-    if (!resource_load(resources, &resource, device, base_path, resource_info)) {
+    if (!resource_load(resources, &resource, device, storage, resource_info)) {
       SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
           "Failed to live reload resource: kind=%d, file_name:%s",

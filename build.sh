@@ -81,6 +81,7 @@ if [ $release -eq 1 ]; then
   echo "Compiling shaders..."
   $shadercross_vertex ../src/fullscreen.hlsl -o res/fullscreen.spv || exit 1
   $shadercross_fragment ../src/fbm_warp.hlsl -o res/fbm_warp.spv || exit 1
+  $shadercross_fragment ../src/plasma_beat.hlsl -o res/plasma_beat.spv || exit 1
 fi
 
 echo "Compiling source files..."

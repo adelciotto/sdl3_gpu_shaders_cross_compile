@@ -45,6 +45,7 @@ if "%release%"=="1" (
 echo Compiling shaders...
 %shadercross_vertex% ..\src\fullscreen.hlsl -o res\fullscreen.dxil || exit /b 1
 %shadercross_fragment% ..\src\fbm_warp.hlsl -o res\fbm_warp.dxil || exit /b 1
+%shadercross_fragment% ..\src\plasma_beat.hlsl -o res\plasma_beat.dxil || exit /b 1
 )
 
 echo Compiling source files...

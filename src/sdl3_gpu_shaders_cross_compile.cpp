@@ -33,7 +33,7 @@ struct Shader_FBM_Warp_Uniforms {
 };
 
 struct App_State {
-  std::string          base_path;
+  SDL_Storage*         title_storage;
   SDL_GPUDevice*       device;
   SDL_Window*          window;
   SDL_GPUTextureFormat swapchain_texture_format;
@@ -72,7 +72,7 @@ static constexpr std::array RENDER_TARGET_SCALE_VALUES = {
     0.5f,
 };
 
-static bool create_render_texture(App_State* as) {
+static bool init_render_texture(App_State* as) {
   as->render_size = as->window_size_pixels * RENDER_TARGET_SCALE_VALUES[as->render_scale_index];
 
   SDL_GPUTexture* render_target;
@@ -98,7 +98,7 @@ static bool create_render_texture(App_State* as) {
   return true;
 }
 
-static bool create_shader_pipeline(App_State* as, Shader_Kind shader_kind) {
+static bool init_pipeline(App_State* as, Shader_Kind shader_kind) {
   SDL_GPUColorTargetDescription desc = {};
   desc.format                        = as->swapchain_texture_format;
 
@@ -126,7 +126,7 @@ static bool on_window_pixel_size_changed(App_State* as, int width, int height) {
   if (as->window_size_pixels.X == width && as->window_size_pixels.Y == height) { return true; }
   as->window_size_pixels = HMM_V2(width, height);
 
-  if (!create_render_texture(as)) {
+  if (!init_render_texture(as)) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create render target");
     return false;
   }
@@ -168,10 +168,24 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
   *appstate = as;
 
 #ifdef BUILD_DEBUG
-  as->base_path = RESOURCES_PATH;
+  std::string base_path = RESOURCES_PATH;
 #else
-  as->base_path = SDL_GetBasePath();
+  auto base_path_ptr = SDL_GetBasePath();
+  if (base_path_ptr == nullptr) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get base path: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+  std::string base_path = base_path_ptr;
 #endif
+  as->title_storage = SDL_OpenTitleStorage(base_path.c_str(), 0);
+  if (as->title_storage == nullptr) {
+    SDL_LogError(
+        SDL_LOG_CATEGORY_APPLICATION,
+        "Failed to get open title stotage: %s",
+        SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+  while (!SDL_StorageReady(as->title_storage)) { SDL_Delay(1); }
 
   SDL_GPUShaderFormat format_flags = 0;
 #ifdef SDL_PLATFORM_WINDOWS
@@ -258,13 +272,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
     ImGui_ImplSDLGPU3_Init(&init_info);
   }
 
-  if (!resources_load(&as->resources, as->device, as->base_path)) {
+  if (!resources_load(&as->resources, as->device, as->title_storage)) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load resources");
     return SDL_APP_FAILURE;
   }
 
   for (int i = 0; i < SHADER_KIND_COUNT; i++) {
-    if (!create_shader_pipeline(as, static_cast<Shader_Kind>(i))) { return SDL_APP_FAILURE; }
+    if (!init_pipeline(as, static_cast<Shader_Kind>(i))) { return SDL_APP_FAILURE; }
   }
 
   on_vsync_changed(as, as->vsync);
@@ -361,7 +375,7 @@ static void draw_imgui(App_State* as) {
         if (ImGui::Selectable(render_scale_strings[i], is_selected)) {
           if (as->render_scale_index != i) {
             as->render_scale_index = i;
-            if (!create_render_texture(as)) {
+            if (!init_render_texture(as)) {
               SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create render target");
             }
           }
@@ -383,7 +397,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
   resources_live_reload(
       &as->resources,
       as->device,
-      as->base_path,
+      as->title_storage,
       &modified_resource_ids,
       &modified_resource_ids_count);
 
@@ -391,14 +405,14 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     switch (id) {
     case RESOURCE_ID_SHADER_VERTEX_FULLSCREEN: {
       for (int i = 0; i < SHADER_KIND_COUNT; i++) {
-        create_shader_pipeline(as, static_cast<Shader_Kind>(i));
+        init_pipeline(as, static_cast<Shader_Kind>(i));
       }
     } break;
     case RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP: {
-      create_shader_pipeline(as, SHADER_KIND_FBM_WARP);
+      init_pipeline(as, SHADER_KIND_FBM_WARP);
     } break;
     case RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT: {
-      create_shader_pipeline(as, SHADER_KIND_PLASMA_BEAT);
+      init_pipeline(as, SHADER_KIND_PLASMA_BEAT);
     } break;
     default:
       break;
@@ -413,6 +427,9 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
   auto delta_time = static_cast<double>(counter_delta) / static_cast<double>(as->count_per_second);
   as->elapsed_time += delta_time;
+
+  static constexpr double TIME_RESET_PERIOD = 3600.0;
+  if (as->elapsed_time >= TIME_RESET_PERIOD) { as->elapsed_time = 0.0; }
 
   ImGui_ImplSDLGPU3_NewFrame();
   ImGui_ImplSDL3_NewFrame();
@@ -517,6 +534,8 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
   SDL_ReleaseWindowFromGPUDevice(as->device, as->window);
   SDL_DestroyWindow(as->window);
   SDL_DestroyGPUDevice(as->device);
+
+  SDL_CloseStorage(as->title_storage);
 
   delete as;
 

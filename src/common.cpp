@@ -18,37 +18,28 @@ template<typename F> Priv_Defer<F> defer_func(F f) {
 #define DEFER_3(x)    DEFER_2(x, __COUNTER__)
 #define defer(code)   auto DEFER_3(_defer_) = defer_func([&]() { code; })
 
-// -- File IO -----------------------------------------------------------------
+// -- Storage -----------------------------------------------------------------
 
-template<typename T> static bool read_file_contents(const std::string& file_path, T* out_contents) {
-  SDL_assert(!file_path.empty());
-  SDL_assert(out_contents != nullptr);
-
-  auto io = SDL_IOFromFile(file_path.c_str(), "r");
-  if (io == nullptr) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to open file: %s", SDL_GetError());
+template<typename Container>
+bool read_storage_file(SDL_Storage* storage, const char* file_path, Container* out_container) {
+  Uint64 file_size = 0;
+  if (!SDL_GetStorageFileSize(storage, file_path, &file_size)) {
+    SDL_LogError(
+        SDL_LOG_CATEGORY_APPLICATION,
+        "Failed to get storage file size: %s",
+        SDL_GetError());
     return false;
   }
-  defer(SDL_CloseIO(io));
-
-  auto size = SDL_GetIOSize(io);
-  if (size < 0) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get file size: %s", SDL_GetError());
+  if (file_size == 0) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get storage file size: file size is 0");
     return false;
   }
 
-  out_contents->resize(size);
-  auto bytes_read = SDL_ReadIO(io, out_contents->data(), size);
-  if (bytes_read == 0) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to read file data: %s", SDL_GetError());
+  out_container->resize(file_size);
+  if (!SDL_ReadStorageFile(storage, file_path, out_container->data(), file_size)) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to read storage file: %s", SDL_GetError());
     return false;
   }
 
   return true;
 }
-
-template bool
-read_file_contents<std::string>(const std::string& file_path, std::string* out_contents);
-template bool read_file_contents<std::vector<uint8_t>>(
-    const std::string&    file_path,
-    std::vector<uint8_t>* out_contents);
