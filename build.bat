@@ -13,10 +13,10 @@ if "%release%"=="1" set debug=0 && echo [release mode]
 :: None for now...
 
 :: --- Compile/Link Definitions -----------------------------------------------
-set cl_common=/nologo /MD /EHsc /std:c++17 ^
+set cl_common=/nologo /EHsc /std:c++17 ^
               /I..\src /I..\extern\HandmadeMath /I..\extern\SDL3\win\include /I..\extern\imgui
-set cl_debug=call cl /Zi /Od /DBUILD_DEBUG /DRESOURCES_PATH=\"%source_dir%/\" /I..\extern\SDL3_shadercross\win\include %cl_common%
-set cl_release=call cl /O2 %cl_common%
+set cl_debug=call cl /MDd /Zi /Od /DBUILD_DEBUG /DRESOURCES_PATH=\"%source_dir%/\" /I..\extern\SDL3_shadercross\win\include %cl_common%
+set cl_release=call cl /MD /O2 %cl_common%
 set cl_link_common=..\extern\SDL3\win\lib\x64\SDL3.lib shell32.lib /subsystem:console
 set cl_link_debug=/link ..\extern\SDL3_shadercross\win\lib\SDL3_shadercross.lib %cl_link_common%
 set cl_link_release=/link %cl_link_common%
