@@ -1,0 +1,10 @@
+-xc++
+-std=c++17
+-Isrc
+-Iextern/SDL3/win/include
+-Iextern/SDL3_shadercross/win/include
+-Iextern/HandmadeMath
+-Iextern/imgui
+-Iextern/nlohmann
+-Iextern/stb
+-DBUILD_DEBUG

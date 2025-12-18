@@ -49,7 +49,9 @@ echo Compiling shaders...
 )
 
 echo Compiling source files...
-%cl_compile% ..\src\sdl3_gpu_shaders_cross_compile.cpp ^
+%cl_compile% ..\src\main.cpp ^
+             ..\src\util.cpp ^
+             ..\src\resources.cpp ^
              ..\extern\imgui\imgui.cpp ^
              ..\extern\imgui\imgui_demo.cpp ^
              ..\extern\imgui\imgui_draw.cpp ^

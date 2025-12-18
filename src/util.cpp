@@ -1,28 +1,13 @@
-// -- Defer -------------------------------------------------------------------
+#include "util.h"
 
-template<typename F> struct Priv_Defer {
-  F f;
-  Priv_Defer(F f) : f(f) {
-  }
-  ~Priv_Defer() {
-    f();
-  }
-};
-
-template<typename F> Priv_Defer<F> defer_func(F f) {
-  return Priv_Defer<F>(f);
-}
-
-#define DEFER_1(x, y) x##y
-#define DEFER_2(x, y) DEFER_1(x, y)
-#define DEFER_3(x)    DEFER_2(x, __COUNTER__)
-#define defer(code)   auto DEFER_3(_defer_) = defer_func([&]() { code; })
+#include <string>
+#include <vector>
 
 // -- Storage -----------------------------------------------------------------
 
 template<typename Container>
 bool read_storage_file(SDL_Storage* storage, const char* file_path, Container* out_container) {
-  Uint64 file_size = 0;
+  uint64_t file_size = 0;
   if (!SDL_GetStorageFileSize(storage, file_path, &file_size)) {
     SDL_LogError(
         SDL_LOG_CATEGORY_APPLICATION,
@@ -43,3 +28,7 @@ bool read_storage_file(SDL_Storage* storage, const char* file_path, Container* o
 
   return true;
 }
+
+template bool read_storage_file<std::string>(SDL_Storage*, const char*, std::string*);
+template bool
+read_storage_file<std::vector<uint8_t>>(SDL_Storage*, const char*, std::vector<uint8_t>*);

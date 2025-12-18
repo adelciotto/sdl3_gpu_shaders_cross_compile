@@ -1,4 +1,7 @@
-// -- External Header Includes ------------------------------------------------
+#include "imgui_font.h"
+#include "resources.h"
+#include "util.h"
+
 #include <HandmadeMath.h>
 #include <SDL3/SDL.h>
 #define SDL_MAIN_USE_CALLBACKS 1
@@ -7,19 +10,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlgpu3.h>
 
-#ifdef BUILD_DEBUG
-#include <SDL3_shadercross/SDL_shadercross.h>
-#endif
-
-// -- Std Header Includes -----------------------------------------------------
 #include <array>
-#include <string>
-#include <vector>
-
-// -- Local Source Includes ---------------------------------------------------
-#include "common.cpp"
-#include "imgui_font.cpp"
-#include "resources.cpp"
 
 enum Shader_Kind {
   SHADER_KIND_FBM_WARP,

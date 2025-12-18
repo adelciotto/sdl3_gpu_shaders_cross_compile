@@ -1,43 +1,13 @@
-enum Resource_ID {
-  RESOURCE_ID_SHADER_VERTEX_FULLSCREEN,
-  RESOURCE_ID_SHADER_FRAGMENT_FBM_WARP,
-  RESOURCE_ID_SHADER_FRAGMENT_PLASMA_BEAT,
-  RESOURCE_ID_COUNT,
-};
+#include "resources.h"
+#include "util.h"
 
-enum Resource_Kind {
-  RESOURCE_KIND_SHADER,
-};
+#ifdef BUILD_DEBUG
+#include <SDL3_shadercross/SDL_shadercross.h>
+#endif
 
-struct Resource_Info {
-  Resource_Kind kind;
-  const char*   file_name;
-  struct {
-    SDL_GPUShaderStage stage;
-    int                samplers_count;
-    int                storage_textures_count;
-    int                storage_buffers_count;
-    int                uniform_buffers_count;
-  } shader;
-};
+#include <vector>
 
-struct Resource {
-  Resource_Kind kind;
-  std::string   file_path;
-  SDL_Time      last_modify_time;
-  struct {
-    SDL_GPUShader* handle;
-  } shader;
-};
-
-struct Resources {
-  std::array<Resource, RESOURCE_ID_COUNT> items;
-  SDL_GPUShaderFormat                     shader_format;
-  const char*                             shader_file_ext;
-  SDL_Time                                last_time;
-};
-
-static constexpr auto RESOURCES_INFO = []() {
+const std::array<Resource_Info, RESOURCE_ID_COUNT> RESOURCES_INFO = []() {
   std::array<Resource_Info, RESOURCE_ID_COUNT> result = {};
   {
     auto info          = &result[RESOURCE_ID_SHADER_VERTEX_FULLSCREEN];
@@ -164,7 +134,7 @@ static void resource_destroy(Resources* resources, Resource* resource, SDL_GPUDe
   }
 }
 
-static bool resources_load(Resources* resources, SDL_GPUDevice* device, SDL_Storage* storage) {
+bool resources_load(Resources* resources, SDL_GPUDevice* device, SDL_Storage* storage) {
   SDL_assert(resources != nullptr);
   SDL_assert(storage != nullptr);
   SDL_assert(device != nullptr);
@@ -216,7 +186,7 @@ static bool resources_load(Resources* resources, SDL_GPUDevice* device, SDL_Stor
   return true;
 }
 
-static void resources_live_reload(
+void resources_live_reload(
     Resources*                                  resources,
     SDL_GPUDevice*                              device,
     SDL_Storage*                                storage,
@@ -275,7 +245,7 @@ static void resources_live_reload(
   resources->last_time = current_time;
 }
 
-static void resources_destroy(Resources* resources, SDL_GPUDevice* device) {
+void resources_destroy(Resources* resources, SDL_GPUDevice* device) {
   SDL_assert(resources != nullptr);
   SDL_assert(device != nullptr);
 
@@ -284,7 +254,7 @@ static void resources_destroy(Resources* resources, SDL_GPUDevice* device) {
   }
 }
 
-static const Resource& resources_get(const Resources& resources, Resource_ID id) {
+const Resource& resources_get(const Resources& resources, Resource_ID id) {
   const auto& resource = resources.items[id];
   switch (resource.kind) {
   case RESOURCE_KIND_SHADER:
