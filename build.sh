@@ -11,7 +11,7 @@ sdl3_build_dir="${source_dir}/tmp/sdl3_build"
 
 if [ ! -d "$sdl3_install_dir" ]; then
   echo "Building SDL3 ${sdl3_version}..."
-  mkdir -p "$sdl3_build_dir" "$sdl3_install_dir"
+  mkdir -p "$sdl3_build_dir"
   cd "$sdl3_build_dir"
   wget -O SDL3.tar.gz "$sdl3_url"
   tar -xzf SDL3.tar.gz
@@ -23,6 +23,7 @@ if [ ! -d "$sdl3_install_dir" ]; then
     -DCMAKE_INSTALL_PREFIX="$sdl3_install_dir" \
     -DBUILD_SHARED_LIBS=ON
   cmake --build . --config Release --parallel $(nproc)
+  mkdir -p "$sdl3_install_dir"
   cmake --install .
   cd "$source_dir"
   rm -rf tmp
